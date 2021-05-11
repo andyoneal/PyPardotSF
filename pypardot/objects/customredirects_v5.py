@@ -8,7 +8,7 @@ class CustomRedirects_v5(object):
         self.client = client
         self.fields = ['id','salesforceId','vanityUrl','trackedUrl','bitlyIsPersonalized', 'bitlyShortUrl','isDeleted','createdAt','updatedAt','createdById','updatedById','name','campaignId','destinationUrl','folderId','trackerDomainId','vanityUrlPath','gaMedium','gaSource','gaCampaign','gaContent','gaTerm']
 
-    def query(self, fields=None, **kwargs):
+    def query(self, fields=None, limit=1000, **kwargs):
         """
         Returns the custom redirects matching the specified criteria parameters.
         Supported search criteria: http://developer.pardot.com/kb/api-version-4/custom-redirects/#supported-search-criteria
@@ -16,7 +16,7 @@ class CustomRedirects_v5(object):
         if fields is None:
             fields = self.fields
         
-        response = self._get(path='', fields=fields, params=kwargs)
+        response = self._get(path='', fields=fields, limit=limit, params=kwargs)
 
         # Ensure result['customRedirect'] is a list, no matter what.
         result = response.get('values')
@@ -37,12 +37,14 @@ class CustomRedirects_v5(object):
         response = self._get(path='/{id}'.format(id=id), fields=fields)
         return response
 
-    def _get(self, object_name='custom-redirects', path=None, fields=None, params=None):
+    def _get(self, object_name='custom-redirects', path=None, fields=None, limit=None, params=None):
         """GET requests for the Custom Redirect object."""
         if params is None:
             params = {}
         if fields is not None:
-            params['fields'] = ",".join(fields)
+            params.update({"fields": ",".join(fields)})
+        if limit is not None:
+            params.update({"limit": limit})
         response = self.client.get(object_name=object_name, path=path, params=params, override_version=5)
         return response
 
