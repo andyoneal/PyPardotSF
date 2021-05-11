@@ -231,7 +231,6 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
         if override_version < 5:
             params.update({'format': 'json'})
         headers = self._build_auth_header()
-        print(headers)
         try:
             self._check_auth(object_name=object_name)
             request = requests.get(self._full_path(object_name, override_version, path), params=params, headers=headers)
