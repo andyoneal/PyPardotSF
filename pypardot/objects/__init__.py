@@ -21,6 +21,7 @@ from .visitors import Visitors
 from .visitoractivities import VisitorActivities
 from .campaigns import Campaigns
 from .exports import Exports
+from .customredirects_v5 import CustomRedirects_v5
 
 
 def load_objects(client):
@@ -47,3 +48,4 @@ def load_objects(client):
     client.visitors = Visitors(client)
     client.visitoractivities = VisitorActivities(client)
     client.exports = Exports(client)
+    client.customredirects_v5 = CustomRedirects_v5(client)

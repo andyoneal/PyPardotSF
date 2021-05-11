@@ -109,7 +109,7 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
 
     def post(self, object_name, path=None,
               headers=None, params=None, data=None, json=None, files=None,
-              retries=0):
+              retries=0, override_version=None):
         """
         Makes a POST request to the API. Checks for invalid requests that raise PardotAPIErrors. If the API key is
         invalid, one re-authentication request is made, in case the key has simply expired. If no errors are raised,
@@ -117,6 +117,8 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
         """
         if headers is None:
             headers = {}
+        if override_version is None:
+            override_version = self.version
         if self.api_key or self.sftoken:
             auth_headers = self._build_auth_header()
             headers.update(auth_headers)
@@ -137,7 +139,7 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
 
         try:
             self._check_auth(object_name=object_name)
-            request = requests.post(self._full_path(object_name, self.version, path),
+            request = requests.post(self._full_path(object_name, override_version, path),
                                     headers=headers,
                                     params=params,
                                     data=data,
@@ -156,14 +158,14 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
                 return response
             elif err.message == 'access_token is invalid, unknown, or malformed':
                 response = self._handle_expired_token(
-                    err, retries, 'post', headers, object_name, path, params, data, files, json)
+                    err, retries, 'post', headers, object_name, path, params, override_version, data, files, json)
                 return response
             else:
                 raise err
 
     def patch(self, object_name, path=None,
               headers=None, params=None, data=None, json=None, files=None,
-              retries=0):
+              retries=0, override_version=None):
         """
         Makes a PATCH request to the API. Checks for invalid requests that raise PardotAPIErrors. If the API key is
         invalid, one re-authentication request is made, in case the key has simply expired. If no errors are raised,
@@ -171,6 +173,9 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
         """
         if headers is None:
             headers = {}
+        
+        if override_version is None:
+            override_version = self.version
 
         if self.api_key or self.sftoken:
             auth_headers = self._build_auth_header()
@@ -188,7 +193,7 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
 
         try:
             self._check_auth(object_name=object_name)
-            request = requests.patch(self._full_path(object_name, self.version, path),
+            request = requests.patch(self._full_path(object_name, override_version, path),
                                      headers=headers,
                                      params=params,
                                      data=data,
@@ -206,13 +211,13 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
                 return response
             elif err.message == 'access_token is invalid, unknown, or malformed':
                 response = self._handle_expired_token(
-                    err, retries, 'patch', headers, object_name, path, params, data, files)
+                    err, retries, 'patch', headers, object_name, path, params, override_version, data, files)
                 return response
             else:
                 raise err
 
 
-    def get(self, object_name, path=None, params=None, retries=0, **kwargs):
+    def get(self, object_name, path=None, params=None, retries=0, override_version=None, **kwargs):
         """
         Makes a GET request to the API. Checks for invalid requests that raise PardotAPIErrors. If the API key is
         invalid, one re-authentication request is made, in case the key has simply expired. If no errors are raised,
@@ -220,11 +225,16 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
         """
         if params is None:
             params = {}
-        params.update({'format': 'json'})
+        if override_version is None:
+            override_version = self.version
+        
+        if override_version < 5:
+            params.update({'format': 'json'})
         headers = self._build_auth_header()
+        print(headers)
         try:
             self._check_auth(object_name=object_name)
-            request = requests.get(self._full_path(object_name, self.version, path), params=params, headers=headers)
+            request = requests.get(self._full_path(object_name, override_version, path), params=params, headers=headers)
             response = self._check_response(request)
             return response
         except PardotAPIError as err:
@@ -234,7 +244,7 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
                 return response
             elif err.message == 'access_token is invalid, unknown, or malformed':
                 response = self._handle_expired_token(
-                    err, retries, 'get', headers, object_name, path, params)
+                    err, retries, 'get', headers, object_name, path, params, override_version)
                 return response
             else:
                 raise err
@@ -255,7 +265,7 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
         else:
             raise err
 
-    def _handle_expired_token(self, err, retries, method, headers, object_name, path, params, data=None, files=None,
+    def _handle_expired_token(self, err, retries, method, headers, object_name, path, params, override_version, data=None, files=None,
                               json=None):
         """
         Tries to refresh an expired token and re-issue the HTTP request. If the refresh has already been attempted,
@@ -267,7 +277,7 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
         self.refresh_sf_token()
         if self.sftoken:
             response = getattr(self, method)(
-                object_name=object_name, path=path, params=params, data=data, json=json,
+                object_name=object_name, path=path, params=params, override_version=override_version, data=data, json=json,
                 files=files, headers=headers, retries=1)
             return response
         else:
@@ -276,7 +286,10 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
     @staticmethod
     def _full_path(object_name, version, path=None):
         """Builds the full path for the API request"""
-        full = '{0}/api/{1}/version/{2}'.format(BASE_URI, object_name, version)
+        if version == 5:
+            full = '{0}/api/v5/objects/{1}'.format(BASE_URI, object_name)
+        else:
+            full = '{0}/api/{1}/version/{2}'.format(BASE_URI, object_name, version)
         if path:
             return full + '{0}'.format(path)
         return full
@@ -291,7 +304,8 @@ Allow access if any alert popup. You will be redirected to a login page, but do 
         if response.headers.get('content-type') == 'application/json':
             json = response.json()
             error = json.get('err')
-            if error:
+            error_v5 = json.get('code')
+            if error or error_v5:
                 raise PardotAPIError(json_response=json)
             return json
         else:
